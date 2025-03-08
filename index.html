@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>屏風式四子棋</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+      flex-direction: column;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(7, 60px);
+      grid-template-rows: repeat(6, 60px);
+      gap: 5px;
+      background-color: #4f4f4f;
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .player-one { background-color: red; }
+    .player-two { background-color: yellow; }
+
+    .control-panel { margin-top: 20px; }
+
+    #game-over-screen {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .game-over-btns button {
+      margin: 10px;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="start-page">
+    <h1>四子棋遊戲</h1>
+    <button onclick="startGame('two-player')">雙人對戰</button>
+    <button onclick="startGame('single-player')">單人對抗電腦</button>
+    <button onclick="startGame('countdown')">倒數計時模式</button>
+  </div>
+
+  <div id="game-page" style="display:none;">
+    <div class="board" id="board"></div>
+    <div class="control-panel">
+      <button onclick="resetGame()">再玩一次</button>
+    </div>
+  </div>
+
+  <div id="game-over-screen">
+    <h2 id="winner-message"></h2>
+    <div class="game-over-btns">
+      <button onclick="resetGame()">再玩一次</button>
+      <button onclick="toggleGamePageVisibility(false)">更換對戰方式</button>
+    </div>
+  </div>
+
+  <script>
+    let currentPlayer = 'player-one';
+    const board = Array.from({ length: 6 }, () => Array(7).fill(null));
+    let isSinglePlayer = false;
+    let isCountdownMode = false;
+    let gameEnded = false;
+    let countdown;
+
+    function startGame(mode) {
+      isSinglePlayer = mode === 'single-player';
+      isCountdownMode = mode === 'countdown';
+      toggleGamePageVisibility(true);
+      resetGame();
+      if (isCountdownMode) startCountdown();
+    }
+
+    function toggleGamePageVisibility(show) {
+      document.getElementById('start-page').style.display = show ? 'none' : 'block';
+      document.getElementById('game-page').style.display = show ? 'block' : 'none';
+    }
+
+    function resetGame() {
+      clearInterval(countdown);
+      for (let row = 0; row < 6; row++) {
+        for (let col = 0; col < 7; col++) {
+          board[row][col] = null;
+        }
+      }
+      document.getElementById('board').innerHTML = '';
+      gameEnded = false;
+      currentPlayer = 'player-one';
+      renderBoard();
+      document.getElementById('game-over-screen').style.display = 'none';
+    }
+
+    function renderBoard() {
+      const boardElement = document.getElementById('board');
+      boardElement.innerHTML = '';
+      for (let row = 0; row < 6; row++) {
+        for (let col = 0; col < 7; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          if (board[row][col]) cell.classList.add(board[row][col]);
+          cell.onclick = () => makeMove(col);
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    function makeMove(col) {
+      if (gameEnded) return;
+      for (let row = 5; row >= 0; row--) {
+        if (!board[row][col]) {
+          board[row][col] = currentPlayer;
+          renderBoard();
+          if (checkWinner(row, col)) {
+            setTimeout(() => showGameOver(), 100);
+            return;
+          }
+          currentPlayer = currentPlayer === 'player-one' ? 'player-two' : 'player-one';
+          if (isCountdownMode) startCountdown();
+          return;
+        }
+      }
+    }
+
+    function checkWinner(row, col) {
+      return checkDirection(row, col, 1, 0) || checkDirection(row, col, 0, 1) ||
+             checkDirection(row, col, 1, 1) || checkDirection(row, col, 1, -1);
+    }
+
+    function checkDirection(row, col, dRow, dCol) {
+      let count = 1;
+      for (let dir = -1; dir <= 1; dir += 2) {
+        let r = row + dir * dRow, c = col + dir * dCol;
+        while (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === currentPlayer) {
+          count++;
+          r += dir * dRow;
+          c += dir * dCol;
+        }
+      }
+      return count >= 4;
+    }
+
+    function showGameOver() {
+      document.getElementById('winner-message').textContent =
+        currentPlayer === 'player-one' ? '紅方獲勝！' : '黃方獲勝！';
+      document.getElementById('game-over-screen').style.display = 'block';
+      gameEnded = true;
+    }
+
+    function startCountdown() {
+      clearInterval(countdown);
+      let timeLeft = 5;
+      countdown = setInterval(() => {
+        console.log(`倒數計時: ${timeLeft}`);
+        if (timeLeft === 0) {
+          clearInterval(countdown);
+          currentPlayer = currentPlayer === 'player-one' ? 'player-two' : 'player-one';
+        }
+        timeLeft--;
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
